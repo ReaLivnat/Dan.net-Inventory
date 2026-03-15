@@ -6,8 +6,13 @@
 <meta name="theme-color" content="#0d1117">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="מלאי דן">
+<link rel="manifest" href="manifest.json">
 <title>מלאי חנויות דן</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+
+<!-- ZXing — סריקה מדויקת יותר מ-Quagga -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.19.1/zxing.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -77,20 +82,22 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
 .panel.active{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
+/* ── SCANNER ── */
 .cam-wrap{background:#000;border-radius:var(--radius);overflow:hidden;margin-bottom:14px;
-  position:relative;min-height:210px;border:1px solid var(--border)}
-#scanner-vp{width:100%;position:relative;min-height:210px;display:flex;align-items:center;justify-content:center}
-#scanner-vp video{width:100%;display:block}
-#scanner-vp canvas.drawingBuffer{display:none}
-.cam-idle{display:flex;flex-direction:column;align-items:center;gap:10px;padding:36px 20px;color:var(--muted)}
+  position:relative;border:1px solid var(--border)}
+#scanner-vp{width:100%;position:relative;display:flex;align-items:center;justify-content:center;min-height:260px}
+#scanner-vp video{width:100%;height:260px;object-fit:cover;display:block}
+.cam-idle{display:flex;flex-direction:column;align-items:center;gap:10px;padding:36px 20px;color:var(--muted);min-height:260px;justify-content:center}
 .cam-idle-icon{font-size:42px}
 .scan-ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
-.scan-box{width:65%;height:88px;border:2px solid var(--accent);border-radius:8px;
-  box-shadow:0 0 0 9999px rgba(0,0,0,.5);position:relative}
+.scan-box{width:70%;height:100px;border:3px solid var(--accent);border-radius:10px;
+  box-shadow:0 0 0 9999px rgba(0,0,0,.55);position:relative}
 .laser{position:absolute;left:0;right:0;height:2px;
   background:linear-gradient(90deg,transparent,var(--accent),transparent);
   animation:laser 2s ease-in-out infinite}
 @keyframes laser{0%{top:8%}50%{top:88%}100%{top:8%}}
+.scan-hint{position:absolute;bottom:8px;left:0;right:0;text-align:center;
+  font-size:11px;color:rgba(255,255,255,.6)}
 
 .scan-row{display:flex;gap:10px;margin-bottom:14px}
 .btn-cam{flex:1;background:var(--accent);color:#0d1117;border:none;border-radius:12px;
@@ -185,6 +192,17 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
 .cs-ok{background:rgba(63,185,80,.1);color:var(--green)}
 .cs-err{background:rgba(248,81,73,.1);color:var(--red)}
 
+/* PWA install banner */
+#install-banner{display:none;background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.3);
+  border-radius:12px;padding:12px 14px;margin:12px 14px 0;
+  align-items:center;gap:10px}
+#install-banner.show{display:flex}
+.install-text{flex:1;font-size:13px;line-height:1.4}
+.install-text strong{color:var(--accent);display:block;margin-bottom:2px}
+.btn-install{background:var(--accent);color:#0d1117;border:none;border-radius:8px;
+  padding:8px 14px;font-family:'Rubik',sans-serif;font-size:13px;font-weight:700;
+  cursor:pointer;white-space:nowrap}
+
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(100px);
   background:var(--surf2);color:var(--text);padding:11px 22px;border-radius:100px;
   font-size:13px;font-weight:600;z-index:9999;transition:transform .3s ease;
@@ -233,6 +251,15 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
 </div>
 
 <div id="app">
+  <!-- PWA install banner -->
+  <div id="install-banner">
+    <div class="install-text">
+      <strong>📲 הוסף למסך הבית</strong>
+      גש לאפליקציה במהירות כמו אפליקציה רגילה
+    </div>
+    <button class="btn-install" onclick="installPWA()">התקן</button>
+  </div>
+
   <div class="header">
     <div class="hdr-info">
       <h1>מלאי חנויות דן</h1>
@@ -259,7 +286,10 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
           <div style="font-size:14px;color:var(--muted)">לחץ "סרוק ברקוד" להפעלה</div>
         </div>
         <div class="scan-ov" id="scan-ov" style="display:none">
-          <div class="scan-box"><div class="laser"></div></div>
+          <div class="scan-box">
+            <div class="laser"></div>
+            <div class="scan-hint">מקם את הברקוד בתוך המסגרת</div>
+          </div>
         </div>
       </div>
     </div>
@@ -324,6 +354,14 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
 
   <div class="panel" id="panel-settings">
     <div class="scrd">
+      <div class="scrd-title">📲 התקנה למסך הבית</div>
+      <div class="scrd-desc">כדי להוסיף את האפליקציה למסך הבית של הטלפון:</div>
+      <ol class="steps">
+        <li><strong>אנדרואיד (Chrome):</strong> לחץ על 3 הנקודות ⋮ בפינה ← "הוסף למסך הבית"</li>
+        <li><strong>iPhone (Safari):</strong> לחץ על כפתור השיתוף □↑ ← "הוסף למסך הבית"</li>
+      </ol>
+    </div>
+    <div class="scrd">
       <div class="scrd-title">🔗 חיבור Google Sheets</div>
       <div class="url-box" id="set-url"></div>
       <button class="sbtn2" onclick="testConn()">🧪 בדוק חיבור</button>
@@ -335,18 +373,6 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
       <button class="sbtn2" onclick="exportCSV()">⬇️ הורד CSV</button>
     </div>
     <div class="scrd">
-      <div class="scrd-title">📋 הוראות הגדרה</div>
-      <ol class="steps">
-        <li>פתח את ה-Google Sheets שלך</li>
-        <li>לחץ <strong>Extensions → Apps Script</strong></li>
-        <li>מחק הכל, הדבק את <strong>קוד_Apps_Script.js</strong> ושמור</li>
-        <li>לחץ <strong>Deploy → New deployment → Web App</strong></li>
-        <li>Execute as: <strong>Me</strong> · Who has access: <strong>Anyone</strong></li>
-        <li>העתק את ה-URL שמתקבל</li>
-        <li>הרץ ידנית את <code>initAllSheets()</code> ליצירת 4 גיליונות</li>
-      </ol>
-    </div>
-    <div class="scrd">
       <button class="sbtn2" style="color:var(--red);border-color:rgba(248,81,73,.3)" onclick="resetSetup()">🔄 שנה כתובת Sheets</button>
     </div>
   </div>
@@ -355,26 +381,62 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
 <div class="toast" id="toast"></div>
 
 <script>
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
 let SCRIPT_URL = localStorage.getItem('dan_url') || '';
 let currentStore = '';
 let inventory = [];
+let codeReader = null;
 let scannerOn = false;
 let curBarcode = null;
 let curProduct = null;
 let activeFilter = 'all';
+let deferredPrompt = null;
 const ICONS = {'סטו-דן':'✏️','צילום דן':'📷','צמצם דן':'🔍','צמצם סביונים':'🌿'};
 
+// ═══════════════════════════════════════════
+//  PWA
+// ═══════════════════════════════════════════
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-banner').classList.add('show');
+});
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('install-banner').classList.remove('show');
+  toast('✅ האפליקציה הותקנה על מסך הבית!');
+});
+
+function installPWA() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => {
+      deferredPrompt = null;
+      document.getElementById('install-banner').classList.remove('show');
+    });
+  }
+}
+
+// ═══════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
   if (!SCRIPT_URL) show('setup'); else show('store-picker');
 });
 
+// ═══════════════════════════════════════════
+//  SETUP
+// ═══════════════════════════════════════════
 async function doSetup() {
   const url = document.getElementById('su-url').value.trim();
   if (!url) { document.getElementById('su-err').textContent = 'נא להכניס כתובת'; return; }
   setBL('su-btn', true, 'בודק...');
   try {
     const r = await fetch(url + '?action=getAll&store=סטו-דן');
-    await r.json();
+    const d = await r.json();
+    if (!r.ok && !d) throw new Error();
     SCRIPT_URL = url;
     localStorage.setItem('dan_url', url);
     document.getElementById('su-err').textContent = '';
@@ -389,6 +451,9 @@ function resetSetup() {
   stopCam(); localStorage.removeItem('dan_url'); SCRIPT_URL=''; currentStore=''; show('setup');
 }
 
+// ═══════════════════════════════════════════
+//  STORE PICKER
+// ═══════════════════════════════════════════
 async function pickStore(store) {
   currentStore = store;
   inventory = JSON.parse(localStorage.getItem('inv_'+store) || '[]');
@@ -401,6 +466,9 @@ async function pickStore(store) {
 
 function changeStore() { stopCam(); currentStore=''; show('store-picker'); }
 
+// ═══════════════════════════════════════════
+//  API
+// ═══════════════════════════════════════════
 async function api(body) {
   const isRead = body.action==='getAll'||body.action==='getOne';
   if (isRead) {
@@ -436,51 +504,129 @@ async function testConn() {
   } catch(_) { el.className='conn-status cs-err'; el.textContent='❌ לא ניתן להגיע ל-Sheets'; }
 }
 
+// ═══════════════════════════════════════════
+//  SCANNER — ZXing (מדויק יותר)
+// ═══════════════════════════════════════════
 function toggleCam() { scannerOn ? stopCam() : startCam(); }
 
-function startCam() {
+async function startCam() {
   document.getElementById('cam-idle').style.display='none';
   document.getElementById('scan-ov').style.display='flex';
   document.getElementById('cam-txt').textContent='עצור';
   document.getElementById('cam-icon').textContent='⏹';
-  Quagga.init({
-    inputStream:{type:'LiveStream',target:document.getElementById('scanner-vp'),
-      constraints:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}},
-    decoder:{readers:['ean_reader','ean_8_reader','code_128_reader','upc_reader','upc_e_reader']},
-    locate:true
-  }, err => { if(err){toast('❌ שגיאת מצלמה');resetCam();return;} Quagga.start(); scannerOn=true; });
-  Quagga.onDetected(r => { const c=r.codeResult.code; if(c){stopCam();handleBarcode(c);} });
+  scannerOn = true;
+
+  try {
+    // נסה ZXing תחילה
+    if (typeof ZXing !== 'undefined') {
+      codeReader = new ZXing.BrowserMultiFormatReader();
+      const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+      // בחר מצלמה אחורית אם קיימת
+      const backCam = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear') || d.label.toLowerCase().includes('environment'));
+      const deviceId = backCam ? backCam.deviceId : (devices[devices.length-1]?.deviceId);
+
+      const videoEl = document.createElement('video');
+      videoEl.style.cssText = 'width:100%;height:260px;object-fit:cover;display:block';
+      document.getElementById('scanner-vp').insertBefore(videoEl, document.getElementById('scan-ov'));
+
+      await codeReader.decodeFromVideoDevice(deviceId, videoEl, (result, err) => {
+        if (result) {
+          const code = result.getText();
+          stopCam();
+          handleBarcode(code);
+        }
+      });
+    } else {
+      throw new Error('ZXing not loaded');
+    }
+  } catch(e) {
+    // Fallback — מצלמה פשוטה עם getUserMedia
+    toast('⚠️ מעבר למצב סריקה חלופי');
+    fallbackCam();
+  }
+}
+
+async function fallbackCam() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width:{ideal:1280}, height:{ideal:720} }
+    });
+    const videoEl = document.createElement('video');
+    videoEl.srcObject = stream;
+    videoEl.autoplay = true;
+    videoEl.playsInline = true;
+    videoEl.style.cssText = 'width:100%;height:260px;object-fit:cover;display:block';
+    document.getElementById('scanner-vp').insertBefore(videoEl, document.getElementById('scan-ov'));
+    toast('📷 מצלמה פעילה — השתמש בהכנסה ידנית');
+  } catch(e) {
+    toast('❌ לא ניתן לגשת למצלמה');
+    resetCam();
+  }
 }
 
 function stopCam() {
-  if(scannerOn){try{Quagga.stop();}catch(_){} scannerOn=false;} resetCam();
+  scannerOn = false;
+  if (codeReader) { try { codeReader.reset(); } catch(_){} codeReader = null; }
+  // עצור כל stream
+  const video = document.getElementById('scanner-vp').querySelector('video');
+  if (video) {
+    if (video.srcObject) { video.srcObject.getTracks().forEach(t=>t.stop()); }
+    video.remove();
+  }
+  resetCam();
 }
 
 function resetCam() {
-  scannerOn=false;
+  scannerOn = false;
   document.getElementById('cam-idle').style.display='flex';
   document.getElementById('scan-ov').style.display='none';
   document.getElementById('cam-txt').textContent='סרוק ברקוד';
   document.getElementById('cam-icon').textContent='📷';
-  const v=document.getElementById('scanner-vp').querySelector('video'); if(v) v.remove();
 }
 
 function manualEntry() {
   const c = prompt('הכנס ברקוד ידנית:'); if(c&&c.trim()) handleBarcode(c.trim());
 }
 
+// ═══════════════════════════════════════════
+//  BARCODE
+// ═══════════════════════════════════════════
 async function handleBarcode(code) {
-  curBarcode=code; hide('pcard'); hide('nform');
-  let product = inventory.find(p=>p.barcode===code);
+  // נרמל UPC-A: אם 13 ספרות מתחיל ב-0, הסר את ה-0
+  if (code.length === 13 && code.startsWith('0')) {
+    code = code.substring(1);
+  }
+
+  curBarcode = code; hide('pcard'); hide('nform');
+  let product = inventory.find(p => p.barcode === code);
+
+  if (!product) {
+    // נסה גם עם 0 בהתחלה (למקרה שנשמר ב-13 ספרות)
+    const alt = code.length === 12 ? '0'+code : null;
+    if (alt) product = inventory.find(p => p.barcode === alt);
+  }
+
   if (!product) {
     toast('🔍 מחפש ב-Sheets...');
     try {
-      const res = await api({action:'getOne', store:currentStore, barcode:code});
-      if (res.ok && res.found) { product=res.product; inventory.push(product); localStorage.setItem('inv_'+currentStore, JSON.stringify(inventory)); }
+      let res = await api({action:'getOne', store:currentStore, barcode:code});
+      if (res.ok && res.found) { product=res.product; }
+      else if (code.length === 12) {
+        // נסה עם 0 בהתחלה
+        res = await api({action:'getOne', store:currentStore, barcode:'0'+code});
+        if (res.ok && res.found) { product=res.product; curBarcode='0'+code; }
+      }
+      if (product) { inventory.push(product); localStorage.setItem('inv_'+currentStore, JSON.stringify(inventory)); }
     } catch(_) {}
   }
+
   if (product) { curProduct=product; showProduct(product); }
-  else { toast('מוצר לא קיים — הוסף פרטים'); document.getElementById('nf-bc').textContent='ברקוד: '+code; showEl('nform'); document.getElementById('nf-name').focus(); }
+  else {
+    toast('מוצר לא קיים — הוסף פרטים');
+    document.getElementById('nf-bc').textContent='ברקוד: '+code;
+    showEl('nform');
+    document.getElementById('nf-name').focus();
+  }
 }
 
 function showProduct(p) {
@@ -534,7 +680,14 @@ async function addNew() {
   setBL('badd',false,'✅ הוסף ל-Sheets');
 }
 
-function renderAll() { updateHeader(); if(document.getElementById('panel-list').classList.contains('active')) renderList(); if(document.getElementById('panel-stats').classList.contains('active')) renderStats(); }
+// ═══════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════
+function renderAll() {
+  updateHeader();
+  if(document.getElementById('panel-list').classList.contains('active')) renderList();
+  if(document.getElementById('panel-stats').classList.contains('active')) renderStats();
+}
 
 function updateHeader() {
   const need=inventory.filter(p=>p.qty<=p.min).length;
@@ -559,7 +712,7 @@ function quickEdit(barcode){goTab('scan');handleBarcode(barcode);}
 
 function renderStats() {
   const total=inventory.length,danger=inventory.filter(p=>p.qty<=0).length,warn=inventory.filter(p=>p.qty>0&&p.qty<=p.min).length,ok=inventory.filter(p=>p.qty>p.min).length;
-  document.getElementById('s-total').textContent=total; document.getElementById('s-danger').textContent=danger; document.getElementById('s-warn').textContent=warn; document.getElementById('s-ok').textContent=ok;
+  document.getElementById('s-total').textContent=total;document.getElementById('s-danger').textContent=danger;document.getElementById('s-warn').textContent=warn;document.getElementById('s-ok').textContent=ok;
   const need=inventory.filter(p=>p.qty<=p.min),ol=document.getElementById('olist');
   if(!need.length){ol.innerHTML=`<div class="empty" style="padding:18px"><div class="empty-icon">🎉</div><div>כל המלאי תקין!</div></div>`;return;}
   ol.innerHTML=need.map(p=>`<div class="iitem"><div class="dot ${p.qty<=0?'ddanger':'dwarn'}"></div><div class="iinfo"><div class="iname">${p.name}</div><div class="imeta">יש: ${p.qty} · מינימום: ${p.min} · ספק: ${p.supplier||'—'}</div></div><div class="iqty" style="color:${p.qty<=0?'var(--red)':'var(--yellow)'}">+${Math.max(0,p.min*2-p.qty)}</div></div>`).join('');
@@ -585,7 +738,7 @@ function exportCSV() {
   const BOM='\uFEFF',hdr=['ברקוד','שם מוצר','קטגוריה','ספק','כמות','מינימום','סטטוס'];
   const rows=inventory.map(p=>[p.barcode,p.name,p.category,p.supplier||'',p.qty,p.min,statusOf(p).label.replace(/[🔴🟡🟢]/g,'').trim()]);
   const csv=BOM+[hdr,...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); a.download=currentStore+'_מלאי.csv'; a.click(); toast('✅ CSV הורד');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=currentStore+'_מלאי.csv';a.click();toast('✅ CSV הורד');
 }
 
 function show(id){['setup','store-picker','app'].forEach(s=>document.getElementById(s).style.display=s===id?(s==='app'?'block':'flex'):'none');}
@@ -593,6 +746,11 @@ function showEl(id){document.getElementById(id).classList.add('show');}
 function hide(id){document.getElementById(id).classList.remove('show');}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
 function setBL(id,loading,label){const el=document.getElementById(id);if(!el)return;el.disabled=loading;el.innerHTML=loading?`<span class="spinner"></span> ${label}`:label;}
+
+// Service Worker לתמיכה ב-PWA
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
 </script>
 </body>
 </html>
