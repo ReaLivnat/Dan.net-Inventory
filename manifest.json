@@ -1,0 +1,30 @@
+{
+  "name": "מלאי חנויות דן",
+  "short_name": "מלאי דן",
+  "description": "ניהול מלאי 4 חנויות דן",
+  "start_url": "/Dan.net-Inventory/",
+  "scope": "/Dan.net-Inventory/",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "orientation": "portrait",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3ea.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3ea.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3ea.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
