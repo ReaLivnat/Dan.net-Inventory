@@ -533,8 +533,18 @@ function startCam() {
       ]
     },
     (decodedText) => {
-      stopCam();
-      handleBarcode(decodedText);
+      // ודא שאותו ברקוד נסרק 3 פעמים ברצף לפני קריאה
+      if (!window._lastScan) window._lastScan = {code:'', count:0};
+      if (window._lastScan.code === decodedText) {
+        window._lastScan.count++;
+        if (window._lastScan.count >= 3) {
+          window._lastScan = {code:'', count:0};
+          stopCam();
+          handleBarcode(decodedText);
+        }
+      } else {
+        window._lastScan = {code:decodedText, count:1};
+      }
     },
     () => {} // ignore errors during scan
   ).then(() => {
