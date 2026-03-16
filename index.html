@@ -11,8 +11,8 @@
 <link rel="manifest" href="manifest.json">
 <title>מלאי חנויות דן</title>
 
-<!-- ZXing — סריקה מדויקת יותר מ-Quagga -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.19.1/zxing.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -509,70 +509,48 @@ async function testConn() {
 // ═══════════════════════════════════════════
 function toggleCam() { scannerOn ? stopCam() : startCam(); }
 
-async function startCam() {
+function startCam() {
   document.getElementById('cam-idle').style.display='none';
   document.getElementById('scan-ov').style.display='flex';
   document.getElementById('cam-txt').textContent='עצור';
   document.getElementById('cam-icon').textContent='⏹';
-  scannerOn = true;
 
-  try {
-    // נסה ZXing תחילה
-    if (typeof ZXing !== 'undefined') {
-      codeReader = new ZXing.BrowserMultiFormatReader();
-      const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-      // בחר מצלמה אחורית אם קיימת
-      const backCam = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear') || d.label.toLowerCase().includes('environment'));
-      const deviceId = backCam ? backCam.deviceId : (devices[devices.length-1]?.deviceId);
+  Quagga.init({
+    inputStream:{
+      type:'LiveStream',
+      target:document.getElementById('scanner-vp'),
+      constraints:{ facingMode:'environment', width:{ideal:1280}, height:{ideal:720} }
+    },
+    decoder:{
+      readers:['upc_reader','upc_e_reader','ean_reader','ean_8_reader','code_128_reader','code_39_reader'],
+      multiple: false
+    },
+    locate: true,
+    numOfWorkers: 2,
+    frequency: 10
+  }, err => {
+    if (err) { toast('❌ שגיאת מצלמה'); resetCam(); return; }
+    Quagga.start();
+    scannerOn = true;
+  });
 
-      const videoEl = document.createElement('video');
-      videoEl.style.cssText = 'width:100%;height:260px;object-fit:cover;display:block';
-      document.getElementById('scanner-vp').insertBefore(videoEl, document.getElementById('scan-ov'));
-
-      await codeReader.decodeFromVideoDevice(deviceId, videoEl, (result, err) => {
-        if (result) {
-          const code = result.getText();
-          stopCam();
-          handleBarcode(code);
-        }
-      });
-    } else {
-      throw new Error('ZXing not loaded');
+  let lastCode = '';
+  let lastTime = 0;
+  Quagga.onDetected(result => {
+    const code = result.codeResult.code;
+    const now = Date.now();
+    if (code && (code !== lastCode || now - lastTime > 3000)) {
+      lastCode = code; lastTime = now;
+      stopCam();
+      handleBarcode(code);
     }
-  } catch(e) {
-    // Fallback — מצלמה פשוטה עם getUserMedia
-    toast('⚠️ מעבר למצב סריקה חלופי');
-    fallbackCam();
-  }
-}
-
-async function fallbackCam() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width:{ideal:1280}, height:{ideal:720} }
-    });
-    const videoEl = document.createElement('video');
-    videoEl.srcObject = stream;
-    videoEl.autoplay = true;
-    videoEl.playsInline = true;
-    videoEl.style.cssText = 'width:100%;height:260px;object-fit:cover;display:block';
-    document.getElementById('scanner-vp').insertBefore(videoEl, document.getElementById('scan-ov'));
-    toast('📷 מצלמה פעילה — השתמש בהכנסה ידנית');
-  } catch(e) {
-    toast('❌ לא ניתן לגשת למצלמה');
-    resetCam();
-  }
+  });
 }
 
 function stopCam() {
-  scannerOn = false;
-  if (codeReader) { try { codeReader.reset(); } catch(_){} codeReader = null; }
-  // עצור כל stream
-  const video = document.getElementById('scanner-vp').querySelector('video');
-  if (video) {
-    if (video.srcObject) { video.srcObject.getTracks().forEach(t=>t.stop()); }
-    video.remove();
-  }
+  if (scannerOn) { try { Quagga.stop(); } catch(_){} scannerOn = false; }
+  const v = document.getElementById('scanner-vp').querySelector('video');
+  if (v) v.remove();
   resetCam();
 }
 
