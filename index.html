@@ -173,6 +173,15 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
 .cs-ok{background:rgba(63,185,80,.1);color:var(--green)}
 .cs-err{background:rgba(248,81,73,.1);color:var(--red)}
 
+/* STOCKTAKE */
+.st-item{background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.st-item-info{flex:1;min-width:0}
+.st-item-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-item-bc{font-size:11px;color:var(--muted);font-family:monospace}
+.st-qty-ctrl{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.st-inp{width:52px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:6px;color:var(--text);font-family:'Rubik',sans-serif;font-size:16px;font-weight:700;text-align:center}
+.st-del{background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px}
+
 /* MODAL */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:flex-end;justify-content:center}
 .modal-bg.show{display:flex}
@@ -243,6 +252,7 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
   <div class="tabs">
     <div class="tab active" onclick="goTab('scan')"><span>📷</span>סרוק</div>
     <div class="tab" onclick="goTab('list')"><span>📋</span>מלאי</div>
+    <div class="tab" onclick="goTab('stocktake')"><span>🔢</span>ספירה</div>
     <div class="tab" onclick="goTab('stats')"><span>📊</span>סיכום</div>
     <div class="tab" onclick="goTab('settings')"><span>⚙️</span>הגדרות</div>
   </div>
@@ -339,6 +349,35 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
     <div id="olist"></div>
   </div>
 
+  <!-- STOCKTAKE -->
+  <div class="panel" id="panel-stocktake">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div>
+        <div style="font-size:18px;font-weight:800">🔢 ספירת מלאי</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">סרוק מוצרים והכנס כמויות — שמור הכל בסוף</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="ibtn" onclick="clearStocktake()" style="color:var(--red);border-color:rgba(248,81,73,.3)">נקה</button>
+        <button class="ibtn" style="background:var(--green);color:#0d1117;border-color:var(--green);font-weight:700" onclick="saveStocktake()">שמור הכל</button>
+      </div>
+    </div>
+
+    <div class="scan-row">
+      <button class="btn-cam" id="btn-cam-st" onclick="toggleStocktakeCam()">
+        <span id="st-cam-icon">📷</span><span id="st-cam-txt">סרוק לספירה</span>
+      </button>
+      <button class="btn-manual" onclick="manualStocktake()">ידני</button>
+    </div>
+    <div class="cam-wrap" id="st-cam-wrap" style="display:none">
+      <div id="scanner-vp-st" style="min-height:200px"></div>
+    </div>
+
+    <div id="st-list-wrap" style="margin-top:4px">
+      <div class="empty" id="st-empty"><div class="empty-icon">📦</div><div>סרוק מוצרים להוספה לספירה</div></div>
+      <div id="st-list"></div>
+    </div>
+  </div>
+
   <!-- SETTINGS -->
   <div class="panel" id="panel-settings">
     <div class="scrd">
@@ -426,8 +465,35 @@ let aiDetectedProduct = null;
 //  BOOT
 // ═══════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
-  if (!SCRIPT_URL) show('setup'); else { localStorage.setItem('dan_url', SCRIPT_URL); show('store-picker'); }
+  if (!SCRIPT_URL) { show('setup'); return; }
+  localStorage.setItem('dan_url', SCRIPT_URL);
+  showStorePicker();
 });
+
+function showStorePicker() {
+  show('store-picker');
+  const last = localStorage.getItem('last_store');
+  document.querySelectorAll('.store-btn').forEach(btn => {
+    const name = btn.querySelector('.s-name').textContent;
+    if (name === last) {
+      btn.style.borderColor = 'var(--accent)';
+      btn.style.background = 'rgba(88,166,255,.1)';
+      const tag = document.createElement('div');
+      tag.textContent = 'אחרונה';
+      tag.style.cssText = 'font-size:10px;color:var(--accent);font-weight:700;margin-top:4px';
+      // remove old tag if exists
+      const old = btn.querySelector('.last-tag');
+      if (old) old.remove();
+      tag.className = 'last-tag';
+      btn.appendChild(tag);
+    } else {
+      btn.style.borderColor = '';
+      btn.style.background = '';
+      const old = btn.querySelector('.last-tag');
+      if (old) old.remove();
+    }
+  });
+}
 
 // ═══════════════════════════════
 //  SETUP
@@ -456,6 +522,7 @@ function resetSetup() {
 // ═══════════════════════════════
 async function pickStore(store) {
   currentStore = store;
+  localStorage.setItem('last_store', store);
   inventory = JSON.parse(localStorage.getItem('inv_'+store) || '[]');
   show('app');
   document.getElementById('hdr-store').textContent = STORE_ICONS[store]+' '+store;
@@ -464,7 +531,7 @@ async function pickStore(store) {
   syncAll(false);
 }
 
-function changeStore() { stopCam(); currentStore=''; show('store-picker'); }
+function changeStore() { stopCam(); currentStore=''; showStorePicker(); }
 
 // ═══════════════════════════════
 //  API
@@ -898,11 +965,19 @@ function updateHeader() {
 function renderList(search='') {
   let items = inventory.filter(p=>{
     const m=!search||p.name.includes(search)||p.barcode.includes(search)||(p.category||'').includes(search);
-    const f=activeFilter==='all'||(activeFilter==='danger'&&p.qty<=0)||(activeFilter==='warn'&&p.qty>0&&p.qty<=p.min)||(activeFilter==='ok'&&p.qty>p.min);
+    const isSup = activeFilter.startsWith('sup_');
+    const f=activeFilter==='all'||
+      (activeFilter==='danger'&&p.qty<=0)||
+      (activeFilter==='warn'&&p.qty>0&&p.qty<=p.min)||
+      (activeFilter==='ok'&&p.qty>p.min)||
+      (isSup&&p.supplier===activeFilter.replace('sup_',''));
     return m&&f;
   }).sort((a,b)=>{const r=p=>p.qty<=0?0:p.qty<=p.min?1:2;return r(a)-r(b);});
 
-  document.getElementById('chips').innerHTML=[{id:'all',label:'הכל'},{id:'danger',label:'🔴 חסר'},{id:'warn',label:'🟡 להזמנה'},{id:'ok',label:'🟢 תקין'}]
+  const suppliers = [...new Set(inventory.map(p=>p.supplier).filter(Boolean))].sort();
+  const statusChips = [{id:'all',label:'הכל'},{id:'danger',label:'🔴 חסר'},{id:'warn',label:'🟡 להזמנה'},{id:'ok',label:'🟢 תקין'}];
+  const supplierChips = suppliers.map(s=>({id:'sup_'+s, label:'🏭 '+s}));
+  document.getElementById('chips').innerHTML=[...statusChips,...supplierChips]
     .map(f=>`<span class="chip${activeFilter===f.id?' on':''}" onclick="setFilter('${f.id}')">${f.label}</span>`).join('');
 
   const el=document.getElementById('ilist');
@@ -972,6 +1047,138 @@ function goTab(name) {
   if (name!=='scan') stopCam();
   if (name==='list') renderList();
   if (name==='stats') renderStats();
+}
+
+// ═══════════════════════════════
+//  STOCKTAKE
+// ═══════════════════════════════
+let stocktakeItems = {}; // barcode -> {name, qty}
+let stReader = null;
+let stScannerOn = false;
+
+function toggleStocktakeCam() {
+  stScannerOn ? stopStocktakeCam() : startStocktakeCam();
+}
+
+function startStocktakeCam() {
+  document.getElementById('st-cam-wrap').style.display='block';
+  document.getElementById('st-cam-txt').textContent='עצור';
+  document.getElementById('st-cam-icon').textContent='⏹';
+  stScannerOn = true;
+
+  const reader = new Html5Qrcode("scanner-vp-st");
+  stReader = reader;
+  reader.start(
+    { facingMode:"environment" },
+    { fps:10, qrbox:{width:220,height:100},
+      formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.UPC_A,Html5QrcodeSupportedFormats.UPC_E,Html5QrcodeSupportedFormats.CODE_128] },
+    (code) => {
+      if (!window._stScan) window._stScan={code:'',count:0};
+      if (window._stScan.code===code) {
+        window._stScan.count++;
+        if (window._stScan.count>=3) {
+          window._stScan={code:'',count:0};
+          addToStocktake(code);
+        }
+      } else { window._stScan={code,count:1}; }
+    }, ()=>{}
+  ).then(()=>{
+    setTimeout(()=>{
+      document.querySelectorAll('#scanner-vp-st video').forEach(v=>{
+        v.style.cssText='width:100%!important;height:200px!important;object-fit:cover!important;display:block!important';
+        v.play().catch(()=>{});
+      });
+    },500);
+  }).catch(()=>{ toast('❌ שגיאת מצלמה'); stopStocktakeCam(); });
+}
+
+function stopStocktakeCam() {
+  stScannerOn = false;
+  if (stReader) { stReader.stop().then(()=>{stReader.clear();stReader=null;}).catch(()=>{stReader=null;}); }
+  document.getElementById('st-cam-wrap').style.display='none';
+  document.getElementById('st-cam-txt').textContent='סרוק לספירה';
+  document.getElementById('st-cam-icon').textContent='📷';
+}
+
+function manualStocktake() {
+  const c = prompt('הכנס ברקוד:');
+  if (c && c.trim()) addToStocktake(c.trim());
+}
+
+function addToStocktake(barcode) {
+  if (barcode.length===13 && barcode.startsWith('0')) barcode=barcode.substring(1);
+  if (stocktakeItems[barcode]) {
+    stocktakeItems[barcode].qty++;
+    toast('✅ '+stocktakeItems[barcode].name+' — כמות: '+stocktakeItems[barcode].qty);
+  } else {
+    const p = inventory.find(x=>x.barcode===barcode) || inventory.find(x=>x.barcode==='0'+barcode);
+    stocktakeItems[barcode] = { name: p ? p.name : 'מוצר לא מוכר ('+barcode+')', qty: p ? p.qty : 0, isNew: !p };
+    toast('➕ ' + stocktakeItems[barcode].name);
+  }
+  renderStocktake();
+}
+
+function renderStocktake() {
+  const items = Object.entries(stocktakeItems);
+  document.getElementById('st-empty').style.display = items.length ? 'none' : 'block';
+  document.getElementById('st-list').innerHTML = items.map(([bc,item])=>`
+    <div class="st-item">
+      <div class="st-item-info">
+        <div class="st-item-name">${item.name}</div>
+        <div class="st-item-bc">${bc}</div>
+      </div>
+      <div class="st-qty-ctrl">
+        <button class="sbtn" onclick="stStep('${bc}',-1)">−</button>
+        <input class="st-inp" type="number" value="${item.qty}" min="0" onchange="stocktakeItems['${bc}'].qty=parseInt(this.value)||0" id="st-inp-${bc}">
+        <button class="sbtn" onclick="stStep('${bc}',1)">+</button>
+        <button class="st-del" onclick="removeFromStocktake('${bc}')">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function stStep(bc, d) {
+  stocktakeItems[bc].qty = Math.max(0, stocktakeItems[bc].qty + d);
+  const inp = document.getElementById('st-inp-'+bc);
+  if (inp) inp.value = stocktakeItems[bc].qty;
+}
+
+function removeFromStocktake(bc) {
+  delete stocktakeItems[bc];
+  renderStocktake();
+}
+
+function clearStocktake() {
+  if (!Object.keys(stocktakeItems).length) return;
+  if (confirm('למחוק את כל הספירה?')) { stocktakeItems={}; renderStocktake(); }
+}
+
+async function saveStocktake() {
+  const items = Object.entries(stocktakeItems);
+  if (!items.length) { toast('אין פריטים לשמירה'); return; }
+  if (!confirm('לשמור '+items.length+' פריטים ב-Sheets?')) return;
+
+  toast('⏳ שומר...');
+  let saved = 0;
+  for (const [barcode, item] of items) {
+    try {
+      const res = await api({action:'update', store:currentStore, barcode, qty:item.qty});
+      if (res.ok) {
+        saved++;
+        const idx = inventory.findIndex(p=>p.barcode===barcode);
+        if (idx!==-1) inventory[idx].qty = item.qty;
+        // שמור היסטוריה
+        const histKey='hist_'+currentStore+'_'+barcode;
+        const hist=JSON.parse(localStorage.getItem(histKey)||'[]');
+        hist.push({date:new Date().toLocaleString('he-IL'),qty:item.qty,change:0,note:'ספירת מלאי'});
+        localStorage.setItem(histKey, JSON.stringify(hist.slice(-20)));
+      }
+    } catch(_) {}
+  }
+  localStorage.setItem('inv_'+currentStore, JSON.stringify(inventory));
+  renderAll();
+  toast('✅ נשמרו '+saved+' מוצרים!');
+  stocktakeItems = {};
+  renderStocktake();
 }
 
 function statusOf(p){
