@@ -384,7 +384,7 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
 // ═══════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════
-let SCRIPT_URL = localStorage.getItem('dan_url') || '';
+let SCRIPT_URL = localStorage.getItem('dan_url') || 'https://script.google.com/macros/s/AKfycbzgjZg83h6nMg2fMn3M-VqYX_pUMHL617jkV8HcTgd711xyVuE7VIsW9ald1ljI0tgB/exec';
 let currentStore = '';
 let inventory = [];
 let codeReader = null;
@@ -423,7 +423,7 @@ function installPWA() {
 //  BOOT
 // ═══════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
-  if (!SCRIPT_URL) show('setup'); else show('store-picker');
+  if (!SCRIPT_URL) show('setup'); else { localStorage.setItem('dan_url', SCRIPT_URL); show('store-picker'); }
 });
 
 // ═══════════════════════════════════════════
