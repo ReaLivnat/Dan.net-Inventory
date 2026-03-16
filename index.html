@@ -86,7 +86,13 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
 .cam-wrap{background:#000;border-radius:var(--radius);overflow:hidden;margin-bottom:14px;
   position:relative;border:1px solid var(--border)}
 #scanner-vp{width:100%;position:relative;min-height:260px}
-#scanner-vp video{width:100%;display:block}
+#scanner-vp video{width:100% !important;height:260px !important;object-fit:cover !important;
+  display:block !important;position:relative !important;z-index:1 !important}
+#scanner-vp > div{position:relative !important}
+#reader{width:100% !important}
+#reader video{width:100% !important;height:260px !important;object-fit:cover !important}
+#reader__scan_region{background:transparent !important}
+#reader__scan_region video{width:100% !important;height:260px !important;object-fit:cover !important}
 .cam-idle{display:flex;flex-direction:column;align-items:center;gap:10px;padding:36px 20px;color:var(--muted);min-height:260px;justify-content:center}
 .cam-idle-icon{font-size:42px}
 .scan-ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
@@ -531,7 +537,16 @@ function startCam() {
       handleBarcode(decodedText);
     },
     () => {} // ignore errors during scan
-  ).catch(err => {
+  ).then(() => {
+    // כפה הצגת וידאו על אנדרואיד
+    setTimeout(() => {
+      const videos = document.querySelectorAll('#scanner-vp video');
+      videos.forEach(v => {
+        v.style.cssText = 'width:100%!important;height:260px!important;object-fit:cover!important;display:block!important;z-index:1!important;position:relative!important';
+        v.play().catch(()=>{});
+      });
+    }, 500);
+  }).catch(err => {
     toast('❌ שגיאת מצלמה: ' + err);
     resetCam();
   });
