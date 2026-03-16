@@ -294,6 +294,7 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
       </div>
       <button class="btn-save" id="bsave" onclick="saveQty()">💾 שמור ב-Sheets</button>
       <button class="btn-transfer" onclick="openTransfer()">↔️ העבר לחנות אחרת</button>
+      <button class="btn-transfer" style="margin-top:6px;background:rgba(88,166,255,.1);color:var(--accent);border-color:rgba(88,166,255,.3)" onclick="scanNext()">📷 סרוק מוצר נוסף</button>
       <!-- היסטוריה -->
       <div style="margin-top:16px">
         <div class="sec-hd">היסטוריית עדכונים</div>
@@ -568,6 +569,14 @@ function resetCam() {
   document.getElementById('cam-idle').style.display='flex';
   document.getElementById('cam-txt').textContent='סרוק ברקוד';
   document.getElementById('cam-icon').textContent='📷';
+}
+
+function scanNext() {
+  hide('pcard');
+  hide('nform');
+  curProduct = null;
+  curBarcode = null;
+  startCam();
 }
 
 function manualEntry() {
