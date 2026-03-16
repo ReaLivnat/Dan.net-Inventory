@@ -12,7 +12,7 @@
 <title>מלאי חנויות דן</title>
 
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -85,8 +85,8 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
 /* ── SCANNER ── */
 .cam-wrap{background:#000;border-radius:var(--radius);overflow:hidden;margin-bottom:14px;
   position:relative;border:1px solid var(--border)}
-#scanner-vp{width:100%;position:relative;display:flex;align-items:center;justify-content:center;min-height:260px}
-#scanner-vp video{width:100%;height:260px;object-fit:cover;display:block}
+#scanner-vp{width:100%;position:relative;min-height:260px}
+#scanner-vp video{width:100%;display:block}
 .cam-idle{display:flex;flex-direction:column;align-items:center;gap:10px;padding:36px 20px;color:var(--muted);min-height:260px;justify-content:center}
 .cam-idle-icon{font-size:42px}
 .scan-ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
@@ -284,12 +284,6 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
         <div class="cam-idle" id="cam-idle">
           <div class="cam-idle-icon">📷</div>
           <div style="font-size:14px;color:var(--muted)">לחץ "סרוק ברקוד" להפעלה</div>
-        </div>
-        <div class="scan-ov" id="scan-ov" style="display:none">
-          <div class="scan-box">
-            <div class="laser"></div>
-            <div class="scan-hint">מקם את הברקוד בתוך המסגרת</div>
-          </div>
         </div>
       </div>
     </div>
@@ -511,53 +505,54 @@ function toggleCam() { scannerOn ? stopCam() : startCam(); }
 
 function startCam() {
   document.getElementById('cam-idle').style.display='none';
-  document.getElementById('scan-ov').style.display='flex';
   document.getElementById('cam-txt').textContent='עצור';
   document.getElementById('cam-icon').textContent='⏹';
+  scannerOn = true;
 
-  Quagga.init({
-    inputStream:{
-      type:'LiveStream',
-      target:document.getElementById('scanner-vp'),
-      constraints:{ facingMode:'environment', width:{ideal:1280}, height:{ideal:720} }
-    },
-    decoder:{
-      readers:['upc_reader','upc_e_reader','ean_reader','ean_8_reader','code_128_reader','code_39_reader'],
-      multiple: false
-    },
-    locate: true,
-    numOfWorkers: 2,
-    frequency: 10
-  }, err => {
-    if (err) { toast('❌ שגיאת מצלמה'); resetCam(); return; }
-    Quagga.start();
-    scannerOn = true;
-  });
+  const html5QrCode = new Html5Qrcode("scanner-vp");
+  codeReader = html5QrCode;
 
-  let lastCode = '';
-  let lastTime = 0;
-  Quagga.onDetected(result => {
-    const code = result.codeResult.code;
-    const now = Date.now();
-    if (code && (code !== lastCode || now - lastTime > 3000)) {
-      lastCode = code; lastTime = now;
+  html5QrCode.start(
+    { facingMode: "environment" },
+    {
+      fps: 10,
+      qrbox: { width: 250, height: 150 },
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39
+      ]
+    },
+    (decodedText) => {
       stopCam();
-      handleBarcode(code);
-    }
+      handleBarcode(decodedText);
+    },
+    () => {} // ignore errors during scan
+  ).catch(err => {
+    toast('❌ שגיאת מצלמה: ' + err);
+    resetCam();
   });
 }
 
 function stopCam() {
-  if (scannerOn) { try { Quagga.stop(); } catch(_){} scannerOn = false; }
-  const v = document.getElementById('scanner-vp').querySelector('video');
-  if (v) v.remove();
-  resetCam();
+  scannerOn = false;
+  if (codeReader) {
+    codeReader.stop().then(() => {
+      codeReader.clear();
+      codeReader = null;
+      resetCam();
+    }).catch(() => { codeReader = null; resetCam(); });
+  } else {
+    resetCam();
+  }
 }
 
 function resetCam() {
   scannerOn = false;
   document.getElementById('cam-idle').style.display='flex';
-  document.getElementById('scan-ov').style.display='none';
   document.getElementById('cam-txt').textContent='סרוק ברקוד';
   document.getElementById('cam-icon').textContent='📷';
 }
