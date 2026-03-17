@@ -224,15 +224,20 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
   <div style="font-size:48px;margin-bottom:12px">🏪</div>
   <h2 class="picker-title">באיזו חנות אתה?</h2>
   <p class="picker-sub">בחר חנות להמשך</p>
+  <div id="pwa-banner" style="display:none;background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.3);border-radius:12px;padding:12px 16px;margin-bottom:16px;width:100%;max-width:380px;display:flex;align-items:center;gap:10px">
+    <div style="flex:1;font-size:13px;line-height:1.5"><strong style="color:var(--accent);display:block">📲 הוסף למסך הבית</strong>גש לאפליקציה בלחיצה אחת</div>
+    <button onclick="triggerInstall()" style="background:var(--accent);color:#0d1117;border:none;border-radius:8px;padding:8px 14px;font-family:'Rubik',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">התקן</button>
+  </div>
   <div class="store-grid">
     <div class="store-btn" onclick="pickStore('סטו-דן')"><span class="s-icon">✏️</span><span class="s-name">סטו-דן</span></div>
     <div class="store-btn" onclick="pickStore('צילום דן')"><span class="s-icon">📷</span><span class="s-name">צילום דן</span></div>
     <div class="store-btn" onclick="pickStore('צמצם דן')"><span class="s-icon">🔍</span><span class="s-name">צמצם דן</span></div>
     <div class="store-btn" onclick="pickStore('צמצם סביונים')"><span class="s-icon">🌿</span><span class="s-name">צמצם סביונים</span></div>
   </div>
-  <div style="margin-top:16px;display:flex;gap:12px">
+  <div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
     <span class="change-url" onclick="resetSetup()">שנה כתובת</span>
     <span class="change-url" onclick="openDashboard()" style="color:var(--accent)">📊 דשבורד מנהל</span>
+
   </div>
 </div>
 
@@ -382,10 +387,8 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
   <div class="panel" id="panel-settings">
     <div class="scrd">
       <div class="scrd-title">📲 התקנה למסך הבית</div>
-      <ol class="steps">
-        <li><strong>אנדרואיד (Chrome):</strong> 3 נקודות ⋮ ← "הוסף למסך הבית"</li>
-        <li><strong>iPhone (Safari):</strong> כפתור שיתוף □↑ ← "הוסף למסך הבית"</li>
-      </ol>
+      <button class="sbtn2" id="btn-install-main" onclick="triggerInstall()" style="background:var(--accent);color:#0d1117;font-weight:700;border-color:var(--accent)">📲 הוסף למסך הבית</button>
+      <div id="install-msg" style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.6;display:none"></div>
     </div>
     <div class="scrd">
       <div class="scrd-title">🔗 חיבור Google Sheets</div>
@@ -399,6 +402,37 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
     </div>
     <div class="scrd">
       <button class="sbtn2" style="color:var(--red);border-color:rgba(248,81,73,.3)" onclick="resetSetup()">🔄 שנה כתובת Sheets</button>
+    </div>
+  </div>
+</div>
+
+<!-- INSTALL MODAL -->
+<div class="modal-bg" id="install-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('install-modal')">✕</button>
+    <div class="modal-title">📲 הוסף למסך הבית</div>
+    <div style="font-size:13px;line-height:1.9;color:var(--text)">
+      <div style="background:var(--surf2);border-radius:10px;padding:14px;margin-bottom:10px">
+        <div style="font-weight:700;margin-bottom:8px;color:var(--accent)">Samsung Galaxy (Chrome):</div>
+        <div>1. לחץ על <strong>⋮</strong> בפינה הימנית העליונה</div>
+        <div>2. לחץ על <strong>"Add to Home screen"</strong></div>
+        <div>3. לחץ <strong>"Add"</strong></div>
+      </div>
+      <div style="background:var(--surf2);border-radius:10px;padding:14px;margin-bottom:10px">
+        <div style="font-weight:700;margin-bottom:8px;color:var(--accent)">Samsung Internet:</div>
+        <div>1. פתח את הכתובת ב-Samsung Internet</div>
+        <div>2. לחץ <strong>☰</strong> → <strong>"+"</strong> → <strong>"Add page to Home screen"</strong></div>
+      </div>
+      <div style="background:var(--surf2);border-radius:10px;padding:14px">
+        <div style="font-weight:700;margin-bottom:8px;color:var(--accent)">דרך אחרת — קיצור דרך:</div>
+        <div>1. לחץ לחיצה ארוכה על הכתובת למעלה</div>
+        <div>2. גרור אותה למסך הבית</div>
+      </div>
+      <div style="margin-top:14px;padding:12px;background:rgba(88,166,255,.1);border-radius:10px;font-size:12px;color:var(--muted)">
+        הכתובת לשמירה:<br>
+        <span id="app-url" style="color:var(--accent);font-family:monospace;font-size:11px;word-break:break-all"></span>
+        <button onclick="copyUrl()" style="display:block;margin-top:8px;background:var(--accent);color:#0d1117;border:none;border-radius:6px;padding:6px 14px;font-family:'Rubik',sans-serif;font-size:13px;font-weight:700;cursor:pointer">העתק כתובת</button>
+      </div>
     </div>
   </div>
 </div>
@@ -437,7 +471,7 @@ body{font-family:'Rubik',sans-serif;background:var(--bg);color:var(--text);min-h
 // ═══════════════════════════════
 //  CONFIG
 // ═══════════════════════════════
-const SCRIPT_URL = localStorage.getItem('dan_url') || 'https://script.google.com/macros/s/AKfycbxk7Z9YwiXoRWqGC8kvwjD5HTPJOpyXQQh6kPkf1FydK2tSAY21yhr_fmfziA3c5swI/exec';
+const SCRIPT_URL = localStorage.getItem('dan_url') || 'https://script.google.com/macros/s/AKfycbzgjZg83h6nMg2fMn3M-VqYX_pUMHL617jkV8HcTgd711xyVuE7VIsW9ald1ljI0tgB/exec';
 const ANTHROPIC_KEY = ''; // ← הכנס Anthropic API key לזיהוי תמונות
 const STORES = ['סטו-דן','צילום דן','צמצם דן','צמצם סביונים'];
 const STORE_ICONS = {'סטו-דן':'✏️','צילום דן':'📷','צמצם דן':'🔍','צמצם סביונים':'🌿'};
@@ -448,6 +482,23 @@ const STORE_EMAILS = {
   'צמצם סביונים':'tzamtzam.sav@gmail.com'
 };
 const MANAGER_EMAIL = 'danspic@gmail.com';
+
+// ═══════════════════════════════
+//  PWA INSTALL
+// ═══════════════════════════════
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const link = document.getElementById('install-link');
+  if (link) link.style.display = 'inline';
+  const banner = document.getElementById('pwa-banner');
+  if (banner) banner.style.display = 'flex';
+});
+window.addEventListener('appinstalled', () => {
+  toast('✅ האפליקציה הותקנה על מסך הבית!');
+  deferredPrompt = null;
+});
 
 // ═══════════════════════════════
 //  STATE
@@ -1201,6 +1252,32 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
 function setBL(id,loading,label){const el=document.getElementById(id);if(!el)return;el.disabled=loading;el.innerHTML=loading?`<span class="spinner"></span> ${label}`:label;}
 
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+function copyUrl() {
+  const url = window.location.href;
+  navigator.clipboard.writeText(url).then(()=>toast('✅ הכתובת הועתקה!')).catch(()=>{
+    const el = document.createElement('textarea');
+    el.value = url; document.body.appendChild(el); el.select();
+    document.execCommand('copy'); document.body.removeChild(el);
+    toast('✅ הכתובת הועתקה!');
+  });
+}
+
+function triggerInstall() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(choice => {
+      if (choice.outcome === 'accepted') {
+        toast('✅ האפליקציה הותקנה!');
+      }
+      deferredPrompt = null;
+    });
+    return;
+  }
+  // Show step-by-step modal for Samsung
+  document.getElementById('app-url').textContent = window.location.href;
+  document.getElementById('install-modal').classList.add('show');
+}
 </script>
 </body>
 </html>
